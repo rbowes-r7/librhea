@@ -181,7 +181,7 @@ class LibRhea
       verify: false,
       headers: {
         'Content-Type': 'application/json',
-        'Srtsessionid': '1',
+        'Srtsessionid': @session_id,
       },
       body: [{
         "Model":"MxUtilFileAction",

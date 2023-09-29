@@ -12,7 +12,18 @@ end
 # Set things up
 TARGET = ARGV[0]
 LOCAL_FILE  = ARGV[1]
-REMOTE_PATH, REMOTE_FILE = File.split(ARGV[2])
+
+REMOTE_FILENAME = '' + ARGV[2]
+
+# Handle Windows paths by changing the '\'s to '/'s and back
+if REMOTE_FILENAME.include?('\\') || REMOTE_FILENAME.start_with?('c:')
+  REMOTE_FILENAME.gsub!(/\\/, '/')
+  REMOTE_PATH, REMOTE_FILE = File.split(REMOTE_FILENAME)
+  REMOTE_PATH.gsub!(/\//, '\\')
+else
+  REMOTE_PATH, REMOTE_FILE = File.split(REMOTE_FILENAME)
+end
+
 USERNAME    = ARGV[3]
 PASSWORD    = ARGV[4]
 
@@ -42,18 +53,14 @@ out = `echo 'put -z #{LOCAL_FILE} #{REMOTE_FILE}' | ncftp -u '#{NEW_USERNAME}' -
 
 if out =~ /Requested action not taken/im
   $stderr.puts
-  $stderr.puts "Something went wrong uploading the file! This usually happens because you can't use the same home directory twice without restarting the server process"
-  exit 1
-end
-
-if out =~ /was not accepted/im
+  $stderr.puts "!! Something went wrong uploading the file! This usually happens because you can't use the same home directory twice without restarting the server process"
+elsif out =~ /was not accepted/im
   $stderr.puts
-  $stderr.puts "Something went wrong uploading the file! The FTP username/password didn't work, which means the user didn't get created"
-  exit 1
+  $stderr.puts "!! Something went wrong uploading the file! The FTP username/password didn't work, which means the user didn't get created"
+else
+  puts
+  puts "File likely uploaded! Deleting the new user..."
 end
-
-puts
-puts "File likely uploaded! Deleting the new user..."
 
 RHEA.delete_user(
   username: NEW_USERNAME,

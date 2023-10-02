@@ -10,7 +10,7 @@ class LibRhea
         verify: false,
         headers: {
           'Content-Type': 'application/json',
-          'Srtsessionid': '1',
+          'Srtsessionid': nil,
         },
         body: [{
           "Model": "MxDomServerList",
@@ -57,31 +57,36 @@ class LibRhea
     return result['auth']['SessionId']
   end
 
-  def initialize(base_url, username, password)
+  def initialize(base_url, username: nil, password: nil, token: nil)
     @base_url = base_url
     if username && password
       @session_id = auth(base_url, username, password)
     else
-      @session_id = auth_bypass(base_url)
+      @session_id = token
     end
 
-    uuids_response = HTTParty.post(
-      "#{base_url}/WebApi/Process",
-      verify: false,
-      headers: {
-        'Content-Type': 'application/json',
-        'Srtsessionid': @session_id,
-      },
-      body: [{
-        "Model": "MxDomServerList",
-        "Action":"r",
-      }].to_json
-    )
+    uuids_response = nil
+    loop do
+      uuids_response = HTTParty.post(
+        "#{base_url}/WebApi/Process",
+        verify: false,
+        headers: {
+          'Content-Type': 'application/json',
+          'Srtsessionid': @session_id,
+        },
+        body: [{
+          "Model": "MxDomServerList",
+          "Action":"r",
+        }].to_json
+      )
 
-    if !uuids_response.success?
+      if uuids_response.success?
+        break
+      end
+
       $stderr.puts "Failed to get server UUIDs: HTTP/#{uuids_response.code}"
-      $stderr.puts uuids_response.headers
-      exit 1
+      $stderr.puts "Will try again in a few seconds..."
+      sleep(5)
     end
 
     response = uuids_response.parsed_response.pop
@@ -136,6 +141,7 @@ class LibRhea
       $stderr.puts result.headers
       exit 1
     end
+    #pp result
 
     return uuid
   end

